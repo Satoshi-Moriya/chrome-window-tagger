@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "Window Tagger",
+  "version": "0.2.0",
+  "description": "Chrome のウィンドウごとにタスク名の色ラベルを付けて、常に見える状態にします。",
+  "permissions": ["storage", "tabs", "scripting"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "このウィンドウにタグを付ける"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "commands": {
+    "_execute_action": {
+      "suggested_key": { "default": "Ctrl+Shift+Y" },
+      "description": "タグの設定を開く"
+    }
+  }
+}
