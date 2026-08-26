@@ -67,6 +67,61 @@
         outline: 2px solid var(--fg);
         outline-offset: 2px;
       }
+      /* 画面の縮図として見せる。文字で「右下」と書くより、
+         位置関係がそのまま伝わる。 */
+      .corners {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4px;
+        width: 92px;
+        height: 58px;
+        padding: 4px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+      }
+      .corner {
+        border: 0;
+        border-radius: 3px;
+        background: color-mix(in srgb, var(--fg) 10%, transparent);
+        cursor: pointer;
+        padding: 0;
+        position: relative;
+      }
+      .corner::after {
+        content: '';
+        position: absolute;
+        width: 14px;
+        height: 5px;
+        border-radius: 2px;
+        background: color-mix(in srgb, var(--fg) 32%, transparent);
+      }
+      .corner[data-pos='top-left']::after {
+        top: 3px;
+        left: 3px;
+      }
+      .corner[data-pos='top-right']::after {
+        top: 3px;
+        right: 3px;
+      }
+      .corner[data-pos='bottom-left']::after {
+        bottom: 3px;
+        left: 3px;
+      }
+      .corner[data-pos='bottom-right']::after {
+        bottom: 3px;
+        right: 3px;
+      }
+      .corner[aria-pressed='true'] {
+        background: color-mix(in srgb, #1e88e5 22%, transparent);
+      }
+      .corner[aria-pressed='true']::after {
+        background: #1e88e5;
+      }
+      .corner:focus-visible {
+        outline: 2px solid var(--fg);
+        outline-offset: 1px;
+      }
+
       .row {
         display: flex;
         gap: 8px;
@@ -88,20 +143,6 @@
         color: #fff;
         font-weight: 600;
       }
-      .check {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        margin-top: 14px;
-        font-size: 12px;
-        color: var(--muted);
-      }
-      .caution {
-        margin: 5px 0 0 22px;
-        font-size: 11px;
-        line-height: 1.45;
-        color: var(--muted);
-      }
       .note {
         margin: 12px 0 0;
         font-size: 11px;
@@ -117,15 +158,13 @@
 
     <div class="swatches" id="swatches" role="group" aria-label="色"></div>
 
-    <div class="check">
-      <input id="title" type="checkbox" aria-describedby="title-caution" />
-      <label for="title" style="margin: 0">タブのタイトルにも付ける</label>
-    </div>
-    <p class="caution" id="title-caution">
-      タスクバーや Alt+Tab にも表示されます。ただしタスク名が
-      閲覧中のページから読み取れる状態になり、Chrome
-      の履歴にも残ります。社外秘の名前は入れないでください。
-    </p>
+    <label id="pos-label" style="margin-top: 14px">ラベルの表示位置</label>
+    <div
+      class="corners"
+      id="corners"
+      role="group"
+      aria-labelledby="pos-label"
+    ></div>
 
     <div class="row">
       <button id="apply" class="action primary">適用</button>

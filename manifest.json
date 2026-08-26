@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Window Tagger",
-  "version": "0.2.1",
+  "version": "0.4.0",
   "description": "Chrome のウィンドウごとにタスク名の色ラベルを付けて、常に見える状態にします。",
   "icons": {
     "16": "icons/icon16.png",

@@ -1,13 +1,40 @@
-// ウィンドウID -> {name, color, showInTitle} を保持する。
+// ウィンドウID -> {name, color} を保持する。
 //
 // storage.session を使うので Chrome を終了すると自動的に消える。
 // ウィンドウIDは再起動で変わるため、永続化するとタグが別のウィンドウに
 // 付いてしまう。消える方が安全という判断。
 
 const KEY = 'tags';
+const SETTINGS_KEY = 'settings';
 const COLOR_RE = /^#[0-9a-f]{6}$/i;
 const FALLBACK_COLOR = '#1e88e5';
 const MAX_NAME = 60;
+
+// 表示位置は「毎回変えるもの」ではないので、タグと違って
+// storage.local に置き、再起動後も保持する。
+const POSITIONS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
+const DEFAULT_POSITION = 'bottom-right';
+
+async function getSettings() {
+  const stored = await chrome.storage.local.get(SETTINGS_KEY);
+  const s = stored[SETTINGS_KEY] || {};
+  return {
+    position: POSITIONS.includes(s.position) ? s.position : DEFAULT_POSITION,
+  };
+}
+
+async function saveSettings(next) {
+  const position = POSITIONS.includes(next.position)
+    ? next.position
+    : DEFAULT_POSITION;
+  await chrome.storage.local.set({ [SETTINGS_KEY]: { position } });
+  // 位置は全ウィンドウ共通なので、タグの付いた全ウィンドウに配る
+  const all = await getAll();
+  for (const windowId of Object.keys(all)) {
+    await broadcast(Number(windowId), all[windowId]);
+  }
+  return { position };
+}
 
 // 受け取った値をそのまま信用しない。色は CSS に、名前は DOM に流し込むため、
 // 形式を固定しておく。
@@ -21,7 +48,6 @@ function sanitize(tag) {
   return {
     name,
     color: COLOR_RE.test(tag.color) ? tag.color : FALLBACK_COLOR,
-    showInTitle: tag.showInTitle === true,
   };
 }
 
@@ -60,8 +86,9 @@ async function broadcast(windowId, tag) {
 }
 
 async function sendToTab(tabId, tag) {
+  const { position } = await getSettings();
   try {
-    await chrome.tabs.sendMessage(tabId, { type: 'tag', tag });
+    await chrome.tabs.sendMessage(tabId, { type: 'tag', tag, position });
   } catch {
     // 受け手がいない → 注入してからもう一度
     try {
@@ -69,7 +96,7 @@ async function sendToTab(tabId, tag) {
         target: { tabId },
         files: ['content.js'],
       });
-      await chrome.tabs.sendMessage(tabId, { type: 'tag', tag });
+      await chrome.tabs.sendMessage(tabId, { type: 'tag', tag, position });
     } catch {
       // chrome:// や Chrome ウェブストアなど、注入できないページ。ここは諦める
     }
@@ -84,7 +111,17 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     // コンテンツスクリプトは自分のウィンドウIDを知らないので、
     // 送信元のタブ情報から解決してやる
     const windowId = sender.tab && sender.tab.windowId;
-    getTag(windowId).then((tag) => sendResponse({ tag }));
+    Promise.all([getTag(windowId), getSettings()]).then(([tag, s]) =>
+      sendResponse({ tag, position: s.position })
+    );
+    return true;
+  }
+  if (msg.type === 'getSettings') {
+    getSettings().then((s) => sendResponse(s));
+    return true;
+  }
+  if (msg.type === 'setSettings') {
+    saveSettings(msg.settings || {}).then((s) => sendResponse(s));
     return true;
   }
   if (msg.type === 'setTag') {

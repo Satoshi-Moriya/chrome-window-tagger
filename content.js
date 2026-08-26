@@ -1,5 +1,8 @@
 // ページ上にラベルを描く。Shadow DOM に閉じ込めるので、
 // サイト側の CSS と衝突しない。クリックも透過する。
+//
+// ページのタイトルには一切触れない。ラベルはこの Shadow DOM の中で
+// 完結しており、サイト側の JavaScript からは読み取れない。
 
 if (!window.__windowTaggerLoaded) {
   window.__windowTaggerLoaded = true;
@@ -9,13 +12,19 @@ if (!window.__windowTaggerLoaded) {
     const FALLBACK_COLOR = '#1e88e5';
     const MAX_NAME = 60;
 
+    const GAP = '16px';
+    const POSITIONS = {
+      'top-left': { top: GAP, bottom: 'auto', left: GAP, right: 'auto' },
+      'top-right': { top: GAP, bottom: 'auto', left: 'auto', right: GAP },
+      'bottom-left': { top: 'auto', bottom: GAP, left: GAP, right: 'auto' },
+      'bottom-right': { top: 'auto', bottom: GAP, left: 'auto', right: GAP },
+    };
+    const DEFAULT_POSITION = 'bottom-right';
+
     let host = null;
     let badge = null;
     let current = null;
-
-    let cleanTitle = document.title; // タグの接頭辞を外した素のタイトル
-    let applyingTitle = false;
-    let titleObserver = null;
+    let position = DEFAULT_POSITION;
 
     // 背景側でも検証しているが、ここでも必ず通す。
     // color は CSS に、name は DOM に入るため、素性の保証を二重にする。
@@ -26,7 +35,6 @@ if (!window.__windowTaggerLoaded) {
       return {
         name,
         color: COLOR_RE.test(tag.color) ? tag.color : FALLBACK_COLOR,
-        showInTitle: tag.showInTitle === true,
       };
     }
 
@@ -38,8 +46,6 @@ if (!window.__windowTaggerLoaded) {
       badge = document.createElement('div');
       badge.style.cssText = [
         'position:fixed',
-        'right:16px',
-        'bottom:16px',
         'padding:6px 12px',
         'border-radius:6px',
         'font:600 12px/1.4 system-ui, "Yu Gothic UI", sans-serif',
@@ -56,71 +62,44 @@ if (!window.__windowTaggerLoaded) {
       ].join(';');
       root.appendChild(badge);
       (document.body || document.documentElement).appendChild(host);
+      applyPosition();
     }
 
-    function watchTitle() {
-      if (titleObserver) return;
-      const titleEl = document.querySelector('title');
-      if (!titleEl) return;
-      titleObserver = new MutationObserver(() => {
-        if (applyingTitle) return;
-        // サイト側がタイトルを書き換えた → 素のタイトルとして記録し直す
-        cleanTitle = stripPrefix(document.title);
-        applyTitle();
-      });
-      titleObserver.observe(titleEl, { childList: true });
+    // 四隅のいずれかに寄せる。指定が不正なら既定の右下に戻す。
+    function applyPosition() {
+      if (!badge) return;
+      const p = POSITIONS[position] || POSITIONS[DEFAULT_POSITION];
+      badge.style.top = p.top;
+      badge.style.bottom = p.bottom;
+      badge.style.left = p.left;
+      badge.style.right = p.right;
     }
 
-    // 自分が付けた接頭辞だけを外す。
-    // 正規表現で [..] を落とすと「[速報] ニュース」のような
-    // 元から角括弧で始まるタイトルを壊すため、完全一致で判定する。
-    function stripPrefix(t) {
-      if (!current || !current.showInTitle) return t;
-      const p = `[${current.name}] `;
-      return t.startsWith(p) ? t.slice(p.length) : t;
-    }
-
-    function applyTitle() {
-      const want =
-        current && current.showInTitle
-          ? `[${current.name}] ${cleanTitle}`
-          : cleanTitle;
-      if (document.title === want) return;
-      applyingTitle = true;
-      document.title = want;
-      // MutationObserver は非同期に走るのでマイクロタスク後に解除
-      Promise.resolve().then(() => {
-        applyingTitle = false;
-      });
-    }
-
-    function render(tag) {
-      // 先に旧タグの接頭辞を外してから、新しい状態に移る
-      cleanTitle = stripPrefix(document.title);
+    function render(tag, nextPosition) {
+      if (POSITIONS[nextPosition]) position = nextPosition;
       current = sanitize(tag);
 
       if (!current) {
         if (host && host.isConnected) host.remove();
         host = null;
-        applyTitle();
+        badge = null;
         return;
       }
       ensureHost();
       badge.textContent = current.name;
       badge.style.background = current.color;
-      watchTitle();
-      applyTitle();
+      applyPosition();
     }
 
     chrome.runtime.onMessage.addListener((msg, sender) => {
       if (sender.id !== chrome.runtime.id) return;
-      if (msg.type === 'tag') render(msg.tag);
+      if (msg.type === 'tag') render(msg.tag, msg.position);
     });
 
     // 読み込み時に自分のウィンドウのタグを取りに行く
     chrome.runtime.sendMessage({ type: 'getTag' }, (res) => {
       if (chrome.runtime.lastError) return;
-      if (res && res.tag) render(res.tag);
+      if (res && res.tag) render(res.tag, res.position);
     });
   })();
 }
