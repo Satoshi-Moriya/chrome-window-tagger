@@ -14,13 +14,21 @@ const POSITIONS = [
   ['bottom-right', '右下'],
 ];
 
+const SIZES = [
+  ['small', '小'],
+  ['medium', '中'],
+  ['large', '大'],
+];
+
 const nameEl = document.getElementById('name');
 const swatchEl = document.getElementById('swatches');
 const cornerEl = document.getElementById('corners');
+const sizeEl = document.getElementById('sizes');
 
 let windowId = null;
 let color = COLORS[0];
 let position = 'bottom-right';
+let size = 'medium';
 
 function paintSwatches() {
   swatchEl.replaceChildren();
@@ -63,6 +71,27 @@ function paintCorners() {
   }
 }
 
+function paintSizes() {
+  sizeEl.replaceChildren();
+  for (const [val, label] of SIZES) {
+    const b = document.createElement('button');
+    b.className = 'size-btn';
+    b.type = 'button';
+    b.textContent = label;
+    b.setAttribute('aria-pressed', String(val === size));
+    b.addEventListener('click', async () => {
+      size = val;
+      paintSizes();
+      // 位置と同じく即時反映する。
+      await chrome.runtime.sendMessage({
+        type: 'setSettings',
+        settings: { size },
+      });
+    });
+    sizeEl.appendChild(b);
+  }
+}
+
 async function init() {
   const win = await chrome.windows.getCurrent();
   windowId = win.id;
@@ -75,8 +104,10 @@ async function init() {
     color = res.tag.color;
   }
   if (settings && settings.position) position = settings.position;
+  if (settings && settings.size) size = settings.size;
   paintSwatches();
   paintCorners();
+  paintSizes();
   nameEl.select();
 }
 

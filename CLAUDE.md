@@ -23,9 +23,9 @@ Window Tagger: Chrome の「ウィンドウ」単位で名前と色のタグを�
 
 - **`background.js`**（service worker）— 唯一の正とするデータ保持先。2つのストアを持つ。
   - `chrome.storage.session[KEY]`: `{ [windowId]: {name, color} }`、タグ本体。永続化しないのは意図的な設計であり、不具合ではない — Chrome はウィンドウIDを再起動のたびに振り直すため、永続化すると「前回とは別のウィンドウに以前のタグが付く」壊れ方をする（README「タグは永続化されません」参照）。
-  - `chrome.storage.local[SETTINGS_KEY]`: `{ position }`、バッジを表示する四隅の位置。こちらは全ウィンドウ共通の表示設定なので `storage.local` に永続化される。
+  - `chrome.storage.local[SETTINGS_KEY]`: `{ position, size }`、バッジを表示する四隅の位置と大きさ（小・中・大）。こちらは全ウィンドウ共通の表示設定なので `storage.local` に永続化される。`saveSettings` は片方のキーだけ渡された場合に備え、既存設定とマージしてから保存する。
   - メッセージ種別: `getTag`（送信元タブの `sender.tab.windowId` から自分のウィンドウIDを解決する — コンテンツスクリプト自身は自分のウィンドウIDを知らない）、`getSettings`、`setSettings`、`setTag`、`readTag`（ポップアップが windowId を明示して問い合わせる用）。
-  - `broadcast(windowId, tag)` がそのウィンドウの全タブへ `{type: 'tag', tag, position}` を配る。`sendToTab` は送信に失敗すると `chrome.scripting.executeScript` で `content.js` をその場で注入してから再送する。これは拡張機能のインストール／再読み込みより前から開いていたタブ（宣言的な `content_scripts` の対象外）を救済するための仕組み。
+  - `broadcast(windowId, tag)` がそのウィンドウの全タブへ `{type: 'tag', tag, position, size}` を配る。`sendToTab` は送信に失敗すると `chrome.scripting.executeScript` で `content.js` をその場で注入してから再送する。これは拡張機能のインストール／再読み込みより前から開いていたタブ（宣言的な `content_scripts` の対象外）を救済するための仕組み。
   - `chrome.tabs.onAttached`（タブを別ウィンドウへドラッグ）と `chrome.tabs.onUpdated` の `status === 'complete'`（ページ遷移で注入済みDOMが消える）でタグを貼り直し、`chrome.windows.onRemoved` でそのウィンドウのタグ情報を掃除する。
   - `saveSettings` は位置変更を即座にタグ付き全ウィンドウへ配信する（位置は全体設定のため）。
 

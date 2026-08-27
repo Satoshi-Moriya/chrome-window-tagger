@@ -21,10 +21,31 @@ if (!window.__windowTaggerLoaded) {
     };
     const DEFAULT_POSITION = 'bottom-right';
 
+    // 大きさは3段階。フォントサイズ・余白・角丸をまとめて変える。
+    const SIZES = {
+      small: {
+        padding: '4px 10px',
+        font: '600 10px/1.4 system-ui, "Yu Gothic UI", sans-serif',
+        radius: '5px',
+      },
+      medium: {
+        padding: '6px 12px',
+        font: '600 12px/1.4 system-ui, "Yu Gothic UI", sans-serif',
+        radius: '6px',
+      },
+      large: {
+        padding: '8px 16px',
+        font: '600 14px/1.4 system-ui, "Yu Gothic UI", sans-serif',
+        radius: '7px',
+      },
+    };
+    const DEFAULT_SIZE = 'medium';
+
     let host = null;
     let badge = null;
     let current = null;
     let position = DEFAULT_POSITION;
+    let size = DEFAULT_SIZE;
 
     // 背景側でも検証しているが、ここでも必ず通す。
     // color は CSS に、name は DOM に入るため、素性の保証を二重にする。
@@ -46,9 +67,6 @@ if (!window.__windowTaggerLoaded) {
       badge = document.createElement('div');
       badge.style.cssText = [
         'position:fixed',
-        'padding:6px 12px',
-        'border-radius:6px',
-        'font:600 12px/1.4 system-ui, "Yu Gothic UI", sans-serif',
         'color:#fff',
         'letter-spacing:.02em',
         'box-shadow:0 2px 8px rgba(0,0,0,.28)',
@@ -63,6 +81,7 @@ if (!window.__windowTaggerLoaded) {
       root.appendChild(badge);
       (document.body || document.documentElement).appendChild(host);
       applyPosition();
+      applySize();
     }
 
     // 四隅のいずれかに寄せる。指定が不正なら既定の右下に戻す。
@@ -75,8 +94,18 @@ if (!window.__windowTaggerLoaded) {
       badge.style.right = p.right;
     }
 
-    function render(tag, nextPosition) {
+    // 大きさを反映する。指定が不正なら既定の中サイズに戻す。
+    function applySize() {
+      if (!badge) return;
+      const s = SIZES[size] || SIZES[DEFAULT_SIZE];
+      badge.style.padding = s.padding;
+      badge.style.font = s.font;
+      badge.style.borderRadius = s.radius;
+    }
+
+    function render(tag, nextPosition, nextSize) {
       if (POSITIONS[nextPosition]) position = nextPosition;
+      if (SIZES[nextSize]) size = nextSize;
       current = sanitize(tag);
 
       if (!current) {
@@ -89,17 +118,18 @@ if (!window.__windowTaggerLoaded) {
       badge.textContent = current.name;
       badge.style.background = current.color;
       applyPosition();
+      applySize();
     }
 
     chrome.runtime.onMessage.addListener((msg, sender) => {
       if (sender.id !== chrome.runtime.id) return;
-      if (msg.type === 'tag') render(msg.tag, msg.position);
+      if (msg.type === 'tag') render(msg.tag, msg.position, msg.size);
     });
 
     // 読み込み時に自分のウィンドウのタグを取りに行く
     chrome.runtime.sendMessage({ type: 'getTag' }, (res) => {
       if (chrome.runtime.lastError) return;
-      if (res && res.tag) render(res.tag, res.position);
+      if (res && res.tag) render(res.tag, res.position, res.size);
     });
   })();
 }
