@@ -15,25 +15,35 @@ const MAX_NAME = 60;
 const POSITIONS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
 const DEFAULT_POSITION = 'bottom-right';
 
+// ラベルの大きさも位置と同じく、全ウィンドウ共通の表示設定として扱う。
+const SIZES = ['small', 'medium', 'large'];
+const DEFAULT_SIZE = 'medium';
+
 async function getSettings() {
   const stored = await chrome.storage.local.get(SETTINGS_KEY);
   const s = stored[SETTINGS_KEY] || {};
   return {
     position: POSITIONS.includes(s.position) ? s.position : DEFAULT_POSITION,
+    size: SIZES.includes(s.size) ? s.size : DEFAULT_SIZE,
   };
 }
 
 async function saveSettings(next) {
-  const position = POSITIONS.includes(next.position)
-    ? next.position
+  // 片方のキーしか渡されないことがある（位置だけ／大きさだけの変更）ので、
+  // 既存設定に上書きする形でマージする。
+  const current = await getSettings();
+  const merged = { ...current, ...next };
+  const position = POSITIONS.includes(merged.position)
+    ? merged.position
     : DEFAULT_POSITION;
-  await chrome.storage.local.set({ [SETTINGS_KEY]: { position } });
-  // 位置は全ウィンドウ共通なので、タグの付いた全ウィンドウに配る
+  const size = SIZES.includes(merged.size) ? merged.size : DEFAULT_SIZE;
+  await chrome.storage.local.set({ [SETTINGS_KEY]: { position, size } });
+  // 位置・大きさは全ウィンドウ共通なので、タグの付いた全ウィンドウに配る
   const all = await getAll();
   for (const windowId of Object.keys(all)) {
     await broadcast(Number(windowId), all[windowId]);
   }
-  return { position };
+  return { position, size };
 }
 
 // 受け取った値をそのまま信用しない。色は CSS に、名前は DOM に流し込むため、
@@ -86,9 +96,9 @@ async function broadcast(windowId, tag) {
 }
 
 async function sendToTab(tabId, tag) {
-  const { position } = await getSettings();
+  const { position, size } = await getSettings();
   try {
-    await chrome.tabs.sendMessage(tabId, { type: 'tag', tag, position });
+    await chrome.tabs.sendMessage(tabId, { type: 'tag', tag, position, size });
   } catch {
     // 受け手がいない → 注入してからもう一度
     try {
@@ -96,7 +106,7 @@ async function sendToTab(tabId, tag) {
         target: { tabId },
         files: ['content.js'],
       });
-      await chrome.tabs.sendMessage(tabId, { type: 'tag', tag, position });
+      await chrome.tabs.sendMessage(tabId, { type: 'tag', tag, position, size });
     } catch {
       // chrome:// や Chrome ウェブストアなど、注入できないページ。ここは諦める
     }
@@ -112,7 +122,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     // 送信元のタブ情報から解決してやる
     const windowId = sender.tab && sender.tab.windowId;
     Promise.all([getTag(windowId), getSettings()]).then(([tag, s]) =>
-      sendResponse({ tag, position: s.position })
+      sendResponse({ tag, position: s.position, size: s.size })
     );
     return true;
   }

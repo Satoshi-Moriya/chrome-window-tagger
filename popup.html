@@ -122,6 +122,32 @@
         outline-offset: 1px;
       }
 
+      .sizes {
+        display: flex;
+        gap: 6px;
+        margin-top: 5px;
+      }
+      .size-btn {
+        flex: 1;
+        padding: 6px 0;
+        border-radius: 6px;
+        border: 1px solid var(--line);
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
+      }
+      .size-btn[aria-pressed='true'] {
+        border-color: #1e88e5;
+        color: #1e88e5;
+        background: color-mix(in srgb, #1e88e5 12%, transparent);
+        font-weight: 600;
+      }
+      .size-btn:focus-visible {
+        outline: 2px solid var(--fg);
+        outline-offset: 1px;
+      }
+
       .row {
         display: flex;
         gap: 8px;
@@ -164,6 +190,14 @@
       id="corners"
       role="group"
       aria-labelledby="pos-label"
+    ></div>
+
+    <label id="size-label" style="margin-top: 14px">ラベルの大きさ</label>
+    <div
+      class="sizes"
+      id="sizes"
+      role="group"
+      aria-labelledby="size-label"
     ></div>
 
     <div class="row">
