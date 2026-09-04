@@ -43,7 +43,7 @@ Chrome には標準で「ウィンドウに名前を付ける」機能があり�
 ・chrome:// で始まるページ、新しいタブ、Chrome ウェブストアではラベルを表示できません（ブラウザの仕様による制限です）
 
 ■ ソースコード
-（GitHub のリポジトリ URL をここに記載）
+https://github.com/Satoshi-Moriya/chrome-window-tagger
 ```
 
 ### カテゴリ
@@ -113,6 +113,5 @@ Chrome のウィンドウごとに利用者が設定したタスク名と色の�
 ### プライバシーポリシーの URL
 
 ```
-（PRIVACY.md を GitHub Pages で公開した URL、
-　または https://github.com/ユーザー名/window-tagger/blob/main/PRIVACY.md）
+https://github.com/Satoshi-Moriya/chrome-window-tagger/blob/main/PRIVACY.md
 ```
